@@ -1,4 +1,5 @@
-const { Book } = require('../models');
+const sequelize = require('../Config/database.js')
+const Book  = require('../models/bookModels.js')(sequelize);
 
 exports.createBook = async (req, res) => {
   try {

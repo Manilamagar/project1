@@ -1,4 +1,5 @@
-const { User } = require('../models');
+const { User } = require('../Models/userModels.js');
+const jwt = require("jsonwebtoken")
 
 exports.getUsers = async (req, res) => {
   try {

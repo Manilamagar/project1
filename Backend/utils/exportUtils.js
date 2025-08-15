@@ -1,4 +1,4 @@
-const { Parser } = require('json2csv');
+//const { Parser } = require('json2csv');
 
 function transactionsToCSV(transactions) {
   const fields = ['id','type','status','borrowedAt','returnedAt','User.name','Book.title'];

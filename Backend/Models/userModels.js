@@ -1,9 +1,12 @@
-module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define("User", {
-    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    name: { type: DataTypes.STRING, allowNull: false },
-    email: { type: DataTypes.STRING, unique: true, allowNull: false },
-    role: { type: DataTypes.ENUM("Student", "Staff"), defaultValue: "Student" }
-  });
-  return User;
-};
+// backend/Models/userModels.js
+const { DataTypes } = require('sequelize');
+const sequelize = require('../Config/database.js'); // this path must be correct
+
+const User = sequelize.define('User', {
+  name: DataTypes.STRING,
+  email: { type: DataTypes.STRING, unique: true },
+  password: DataTypes.STRING,
+  role: { type: DataTypes.STRING, defaultValue: 'user' }
+});
+
+module.exports = { User };

@@ -1,183 +1,40 @@
-const CatchAsync = require("../Utils/CatchAsync");
-const userModel = require("./../Model/UserModel");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcrypt");
-
-function createRefreshToken(res, id) {
-    console.log(id)
-    const token = jwtToken(id);
-    console.log(token);
-
-    res.cookie(process.env.AUTH_COOKIES_KEY, token, {
-        expires: new Date(Date.now() + process.env.COOKIES_EXPIRATION * 24 * 60 * 60 * 1000), // millisecond = ms (1s = 1000) 
-    });
-
-    res.status(200).json({
-        status: "success",
-        message: "logged in successfully",
-    })
-}
-
-
-function jwtToken(id) {
-    console.log(id)
-    return jwt.sign({
-        id
-    }, process.env.HASH_STRING, {
-        expiresIn: process.env.EXPIRATION_DURATION // 10d * 24 = 2400 
-    })
-}
-
-exports.CreateUserAccount = CatchAsync(async (req, res) => {
-    console.log(req.body);
-    const { userName, email, password, confirmPassword } = req.body;
-
-    // validating if any one of fields is missing
-    if (!email || !password || !confirmPassword) {
-        console.log("Please Enter all the fields")
-    }
-
-    // check if the password and confirm password are matching or not
-    // if (!password.localeCompare(confirmPassword)) {
-    //     console.log("Password doesnot Matched")
-    // }
-
-    // check if the email is already exists in the database 
-    const check_user = await userModel.findOne({
-        email: email
-    });
-
-    if (check_user) {
-        console.log("users already Exists, Please Log In");
-    }
-
-    const signup = await userModel.create({
-        email: email,
-        userName: userName,
-        password: await bcrypt.hash(password, 8) // SHA256
-    })
-
-
-    if (!signup) {
-        if (err._message == "userModel validation failed") {
-            console.log("your inserted wrong Gmail Account Type");
-        }
-    } else {
-        createRefreshToken(res, signup._id)
-    }
-
-});
-
-exports.Login = CatchAsync(async (req, res) => {
-    console.log(req.body);
-    const { email, password } = req.body;
-
-    // validating if any one of fields is missing
-    if (!email || !password) {
-        res.status(500).json({
-            status: "Failed",
-            message: "Please Enter all the fields"
-        });
-    }
-
-    const user_email = await userModel.findOne({
-        email: email
-    });
-
-    if (!user_email) {
-        console.log("no email");
-        // res.status(500).json({
-        //     status: "Failed",
-        //     message: "No User Found with that Email"
-        // })
-    }
-
-    if (await bcrypt.compare(password, user_email.password)) {
-        createRefreshToken(res, user_email._id)
-    } else {
-        console.log("wrong password");
-        // res.status(500).json({
-        //     status: "Failed",
-        //     message: "wrong password"
-        // })
-    }
-});
-
-exports.isLoggedIn = CatchAsync(async (req, res, next) => {
-    // console.log(req.cookies);
-
-    if (req.cookies.jwt_authtentication_signature) {
-        const DecodedId = jwt.verify(req.cookies.jwt_authtentication_signature, process.env.HASH_STRING);
-
-        // id or _id
-        const user = await userModel.findOne({
-            _id: DecodedId.id
-        });
-
-        console.log("adf" + user)
-        res.locals.user = user;
-    } else {
-        console.log("Unauthorized");
-    }
-
-    next();
-});
-
-exports.isAdminLoggedIn = CatchAsync(async (req, res, next) => {
-    const user = res.locals.user;
-    console.log(user)
-    if (!(user.role === "admin")) {
-        res.send("Route Not Found");
-    }
-
-    next();
-})
-
-exports.UserProfile = CatchAsync(async (req, res, next) => {
-    const user = res.locals.user;
-    res.status(200).json({
-        user
-    })
-});
-
-exports.loggout = CatchAsync(async(req, res) => {
-    console.log(req.cookies)
-    if(req.cookies.jwt_authtentication_signature){
-        res.clearCookie("jwt_authtentication_signature")
-    }
-
-    res.redirect("/");
-});
-
-const { User } = require('../models');
+// authController.js
+// authController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const Joi = require('joi');
-
+const { User } = require('../Models/userModels.js'); // Ensure this is correct
 require('dotenv').config();
-
-const registerSchema = Joi.object({
-  name: Joi.string().required(),
-  email: Joi.string().email().required(),
-  password: Joi.string().min(6).required()
-});
 
 exports.register = async (req, res) => {
   try {
-    const { error } = registerSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    const { name, email, password, role } = req.body;
 
-    const { name, email, password } = req.body;
+    // Debugging - log incoming request body
+    console.log('Register request body:', req.body);
+
+    // Check if all necessary fields are provided
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Check if user already exists
     const existing = await User.findOne({ where: { email } });
     if (existing) return res.status(400).json({ message: 'Email already used' });
 
+    // Hash password before saving
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hash });
+
+    // Create new user
+    const user = await User.create({ name, email, password: hash, role });
+
+    // Return response with user data
     res.status(201).json({ id: user.id, name: user.name, email: user.email });
   } catch (err) {
+    console.error('Error during registration:', err); // Log the error to console for debugging
     res.status(500).json({ message: err.message });
   }
 };
+
 
 exports.login = async (req, res) => {
   try {
@@ -187,22 +44,10 @@ exports.login = async (req, res) => {
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ message: 'Invalid credentials' });
-
-    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+console.log(email,password)
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
-
-exports.deleteUser = (req, res) => {
-    res.send('User deleted successfully');
-};
-
-// Login
-// signup
-// delete user id
-// update Account
-// cookies creation
-// check if user exists ( middleware )
