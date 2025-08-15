@@ -1,4 +1,6 @@
 const { DataTypes } = require('sequelize');
+const sequelize = require('../Config/database');
+
 module.exports = (sequelize) => {
   sequelize.define('PendingUser', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },

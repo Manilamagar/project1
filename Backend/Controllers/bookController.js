@@ -1,10 +1,10 @@
 const sequelize = require('../Config/database.js')
-const Book  = require('../models/bookModels.js')(sequelize);
+const Book  = require('../models/bookModels.js');
 
 exports.createBook = async (req, res) => {
   try {
-    const { title, author, totalCopies, isbn } = req.body;
-    const book = await Book.create({ title, author, totalCopies, availableCopies: totalCopies || 1, isbn });
+    const { title, author, totalCopies, isbn,category} = req.body;
+    const book = await Book.create({ title, author, totalCopies, availableCopies: totalCopies || 1, isbn,category });
     res.status(201).json(book);
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
